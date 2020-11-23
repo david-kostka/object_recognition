@@ -22,7 +22,7 @@ def plot_bbox(img, bbox):
         if is_obj:
             bbox = Rectangle((x, y), xm - x, ym - y, linewidth=1, edgecolor='red', facecolor='none')
             plt.gca().add_patch(bbox)
-            #plt.text(x, y, str([x, y, xm, ym]), color='red')
+            plt.text(x, y, str([x, y, xm, ym]), color='red')
         else:
             plt.text(0, 0, 'No Object found', color='red')
 
