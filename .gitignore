@@ -1,2 +1,6 @@
 /ball_detector
 /old
+/.vscode
+/spl_detector/src/__pycache__
+/spl_detector/data/checkpoints
+/spl_detector/data/logs

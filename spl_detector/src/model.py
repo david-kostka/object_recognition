@@ -4,7 +4,7 @@
 # Datum: 05.11.2020
 
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, Dense, GlobalAveragePooling2D, Dropout, Flatten, Conv2D, MaxPooling2D, BatchNormalization, LeakyReLU, Reshape
+from tensorflow.keras.layers import Input, Dense, GlobalAveragePooling2D, Dropout, Flatten, Conv2D, MaxPooling2D, BatchNormalization, LeakyReLU, Reshape, Softmax, concatenate
 
 def SingleNaoModel(img_size, bnorm=True):
     '''
@@ -68,10 +68,16 @@ def SingleNaoModel(img_size, bnorm=True):
 
     x = Flatten()(x)
     #output = Dense(4, activation="relu")(x)
-    x = Dense(4)(x)
-    output = LeakyReLU(alpha=0.1)(x)
+    bbox_out = Dense(4)(x)
+    bbox_out = LeakyReLU(alpha=0.1)(bbox_out)
+    
+    objectness_out = Dense(1)(x)
+    objectness_out = Softmax()(objectness_out)
 
-    model = Model(input_image, output)
+    output = concatenate([bbox_out, objectness_out])
+
+    model = Model(inputs=input_image, outputs=output)
+
     return model
 
 def TestModel():

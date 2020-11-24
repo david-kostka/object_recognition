@@ -1,2 +1,0 @@
-model_checkpoint_path: "single_nao_4_best_50.tf"
-all_model_checkpoint_paths: "single_nao_4_best_50.tf"
