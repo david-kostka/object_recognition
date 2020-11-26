@@ -4,6 +4,10 @@
 # Author: David Kostka
 # Datum: 05.11.2020
 
+# TODO: In Klasse convertieren, Generalisieren so dass die Struktur der labels.csv definiert werden kann aber der Rest gleich bleibt (selbe TFRecord Struktur)
+# Config Datei lesen um an Dataset anpassbar zu sein
+# Definierbares mapping von CSV Spaltenname zu TFRecord Feature name z.B. {filename:"name", xmin:"minX", ...}
+
 import pandas as pd
 import tensorflow as tf
 import numpy as np
@@ -51,6 +55,40 @@ def write_tfrecord(labels, name, path):
 
     writer.close()
     print("TFRecord '" + path + name + "' created")
+
+def create_tfrecord_from_dir(path, include_negatives=False):
+    '''
+    Erzeugt Train und Validation TFRecord Files aus Label Datei in 'path'
+    Dabei werden die Einträge so gefiltert das nur Bildname/Label Einträge übrig bleiben, die nur einen einzigen Nao im Bild haben
+    
+    Input: Die Label Datei muss eine CSV Datei mit Spalten der Form ('name', 'minX', 'minY', 'maxX', 'maxY') beinhalten.
+    Dabei ist 'name' der Bilddateipfad und der Rest die BBOX Koordinaten
+
+    Output: TFRecord Files 'train.record' und 'val.record' mit Einträgen der Form (Bildname, BBOX Koordinaten), für Bilder, bei denen nur ein Nao zu sehen ist.
+    '''
+    raw_data = pd.read_csv(path + csv_name, sep=r'\s*,\s*', index_col=None)
+    raw_data = raw_data[['name', 'minX', 'minY', 'maxX', 'maxY']]
+    
+    if include_negatives:
+        raw_data['classes'] = 1
+        labels_img_names = raw_data['name'].unique()
+        all_img_names = os.listdir(path + 'images/')
+        no_nao_img_names = np.setdiff1d(all_img_names,labels_img_names)
+        new_data = pd.DataFrame(no_nao_img_names, columns=['name'])
+        new_data['classes'] = 0
+        raw_data = raw_data.append(new_data).sample(frac=1).reset_index(drop=True)
+        raw_data = raw_data[raw_data.name != 'name']
+
+    data = raw_data.fillna(0).groupby('name').filter(lambda x: len(x) == 1)
+    data = data.sample(frac=1).reset_index(drop=True)
+
+    count = len(data)
+    split_index = int(count - count * 0.2)
+
+    print(data)
+
+    write_tfrecord(data[:split_index], 'train.record', path)
+    write_tfrecord(data[split_index:], 'val.record', path)
 
 def parse_image(name, filepath, rgb=False, resize=True):
     '''
@@ -104,41 +142,10 @@ def load_tfrecord_dataset(filepath, csv_name):
     '''
     dataset = tf.data.TFRecordDataset(filepath + csv_name)
     #print('Loaded Dataset: ' + filepath)
-    return dataset.map(lambda x: parse_tfrecord(x, filepath), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(lambda x: parse_tfrecord(x, filepath), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(convert_to_uint8, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    return dataset
 
-def create_tfrecord_from_dir(path, include_negatives=False):
-    '''
-    Erzeugt Train und Validation TFRecord Files aus Label Datei in 'path'
-    Dabei werden die Einträge so gefiltert das nur Bildname/Label Einträge übrig bleiben, die nur einen einzigen Nao im Bild haben
-    
-    Input: Die Label Datei muss eine CSV Datei mit Spalten der Form ('name', 'minX', 'minY', 'maxX', 'maxY') beinhalten.
-    Dabei ist 'name' der Bilddateipfad und der Rest die BBOX Koordinaten
-
-    Output: TFRecord Files 'train.record' und 'val.record' mit Einträgen der Form (Bildname, BBOX Koordinaten), für Bilder, bei denen nur ein Nao zu sehen ist.
-    '''
-    raw_data = pd.read_csv(path + csv_name, sep=r'\s*,\s*', index_col=None)
-    raw_data = raw_data[['name', 'minX', 'minY', 'maxX', 'maxY']]
-    
-    if include_negatives:
-        raw_data['classes'] = 1
-        labels_img_names = raw_data['name'].unique()
-        all_img_names = os.listdir(path + 'images/')
-        no_nao_img_names = np.setdiff1d(all_img_names,labels_img_names)
-        new_data = pd.DataFrame(no_nao_img_names, columns=['name'])
-        new_data['classes'] = 0
-        raw_data = raw_data.append(new_data).sample(frac=1).reset_index(drop=True)
-        raw_data = raw_data[raw_data.name != 'name']
-
-    data = raw_data.fillna(0).groupby('name').filter(lambda x: len(x) == 1)
-    data = data.sample(frac=1).reset_index(drop=True)
-
-    count = len(data)
-    split_index = int(count - count * 0.2)
-
-    print(data)
-
-    write_tfrecord(data[:split_index], 'train.record', path)
-    write_tfrecord(data[split_index:], 'val.record', path)
 
 def load_combined_dataset(subfolders):
     '''
@@ -159,4 +166,6 @@ def load_combined_dataset(subfolders):
     #print('Nr. of Examples validation: ' + str(sum(1 for _ in val_dset)))
 
     return train_dset, val_dset
-                
+
+def convert_to_uint8(img, label):
+    return tf.cast(img * 255.0, dtype=tf.uint8), label               
