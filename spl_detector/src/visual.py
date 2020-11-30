@@ -24,9 +24,14 @@ def plot_bbox(img, bbox, conf_threshold=0.5):
 
     plt.show()
 
-def plot_roc(roc_auc, fpr, tpr):
+def plot_roc(roc_auc, fpr, tpr, optimal_threshold=None, optimal_idx=None):
     plt.title('Receiver Operating Characteristic')
     plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+    if optimal_threshold and optimal_idx:
+        plt.plot(fpr[optimal_idx], tpr[optimal_idx], 'ro')
+        plt.text(fpr[optimal_idx] + 0.02, tpr[optimal_idx] - 0.05, 'trsh: ' + '%.3f' % optimal_threshold)
+        plt.text(fpr[optimal_idx] + 0.02, tpr[optimal_idx] - 0.1, 'tpr: ' + '%.3f' % tpr[optimal_idx])
+        plt.text(fpr[optimal_idx] + 0.02, tpr[optimal_idx] - 0.15, 'fpr: ' + '%.3f' % fpr[optimal_idx])
     plt.legend(loc = 'lower right')
     plt.plot([0, 1], [0, 1],'r--')
     plt.xlim([0, 1])
