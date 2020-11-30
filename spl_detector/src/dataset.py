@@ -20,6 +20,7 @@ csv_name = 'labels.csv'
 
 orig_size = (480, 640)
 target_size = (60, 80)
+uint8 = False
 
 #class SingleNaoDataset:
 def create_tf_example(row):
@@ -143,7 +144,7 @@ def load_tfrecord_dataset(filepath, csv_name):
     dataset = tf.data.TFRecordDataset(filepath + csv_name)
     #print('Loaded Dataset: ' + filepath)
     dataset = dataset.map(lambda x: parse_tfrecord(x, filepath), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset = dataset.map(convert_to_uint8, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    if uint8: dataset = dataset.map(convert_to_uint8, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     return dataset
 
 

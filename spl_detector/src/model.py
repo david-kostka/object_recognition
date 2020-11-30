@@ -5,6 +5,8 @@
 
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Dense, GlobalAveragePooling2D, Dropout, Flatten, Conv2D, MaxPooling2D, BatchNormalization, LeakyReLU, Reshape, Softmax, concatenate
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras import losses
 
 def SingleNaoModel(img_size, bnorm=True):
     '''
@@ -63,7 +65,7 @@ def SingleNaoModel(img_size, bnorm=True):
     x = Conv2D(24, (3, 3), strides=(1,1), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
     x = LeakyReLU(alpha=0.1)(x)
 
-    #x = Conv2D(24, (1, 1), strides=(1,1), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
+    #x = Conv2D(24, (2, 2), strides=(2,2), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
     #x = LeakyReLU(alpha=0.1)(x)
 
     x = Flatten()(x)
@@ -82,8 +84,8 @@ def SingleNaoModel(img_size, bnorm=True):
 
 def decode_output(y_true, y_pred):
     # Cast
-    y_true = K.cast(y_true, dtype=tf.float32)
-    y_pred = K.cast(y_pred, dtype=tf.float32)
+    y_true = K.cast(y_true, dtype=K.floatx())
+    y_pred = K.cast(y_pred, dtype=K.floatx())
 
     # Decode Output
     conf_true = y_true[..., 4]
@@ -115,10 +117,10 @@ def conf_bce(y_true, y_pred):
     #print(bce)
     return bce
 
-def nao_loss(y_true, y_pred):
+def nao_loss(y_true, y_pred, mse_weight=1):
     mse = bbox_mse(y_true, y_pred)
     bce = conf_bce(y_true, y_pred)
-    return mse + bce
+    return (mse_weight * mse) + bce
 
 def test_loss():
     # Loss Funktion und Metriken testen
