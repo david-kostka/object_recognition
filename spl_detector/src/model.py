@@ -117,7 +117,7 @@ def conf_bce(y_true, y_pred):
     #print(bce)
     return bce
 
-def nao_loss(y_true, y_pred, mse_weight=1):
+def nao_loss(y_true, y_pred, mse_weight=10):
     mse = bbox_mse(y_true, y_pred)
     bce = conf_bce(y_true, y_pred)
     return (mse_weight * mse) + bce
