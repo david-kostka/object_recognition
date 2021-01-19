@@ -8,13 +8,9 @@ from tensorflow.keras.layers import Input, Dense, GlobalAveragePooling2D, Dropou
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import losses
 
-def SingleNaoModel(img_size, bnorm=True):
+def FeatureExtractor(input_image, bnorm=True):
     '''
-    Liefert BBOX Koordinaten eines einzelnen Naos im Bild
     Basiert auf JET-Net von B-Human, aber leicht modifiziert und ohne 'depthwise seperable convolutions'
-    Input: Image ((img_size), 1)
-    Output: BBOX (4)
-
     Struktur:
     Bestehend aus 4 'Blöcken'
     Jeder Block besteht aus folgenden Layern:
@@ -23,10 +19,8 @@ def SingleNaoModel(img_size, bnorm=True):
         3. Convolution mit strides=(2,2), emuliert Pooling Layer
         4. Leaky ReLU
     Letzter Block weicht ab: kein Pooling am Ende wie in den anderen Blöcken
-    Output Layer ist ein Dense Layer mit 4 Nodes
+    Output: NxMx24
     '''
-
-    input_image = Input(shape=(*img_size, 1))
 
     if bnorm: 
         x = BatchNormalization()(input_image)
@@ -65,18 +59,46 @@ def SingleNaoModel(img_size, bnorm=True):
     x = Conv2D(24, (3, 3), strides=(1,1), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
     x = LeakyReLU(alpha=0.1)(x)
 
-    #x = Conv2D(24, (2, 2), strides=(2,2), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
-    #x = LeakyReLU(alpha=0.1)(x)
+    return x
+
+def SingleNaoModel(img_size, bnorm=True):
+    '''
+    Liefert BBOX Koordinaten eines einzelnen Naos im Bild
+    Benutzt FeatureExtractor
+    Input: Image ((img_size), 1)
+    Output: BBOX (5)
+    '''
+
+    input_image = Input(shape=(*img_size, 1))
+    x = FeatureExtractor(input_image, bnorm)
 
     x = Flatten()(x)
-    #output = Dense(4, activation="relu")(x)
     bbox_out = Dense(4)(x)
     bbox_out = LeakyReLU(alpha=0.1)(bbox_out)
     
     objectness_out = Dense(1, activation='sigmoid')(x)
-    #objectness_out = Dense(1)(x)
-    #objectness_out = Softmax()(objectness_out)
+
     output = concatenate([bbox_out, objectness_out])
+
+    model = Model(inputs=input_image, outputs=output)
+
+    return model
+
+def MultiNaoModel(img_size, bnorm=True):
+    '''
+    Input: Image ((img_size), 1)
+    Output: 4x5x5
+    '''
+
+    input_image = Input(shape=(*img_size, 1))
+    x = FeatureExtractor(input_image, bnorm)
+
+    x = Conv2D(24, (3, 3), strides=(2,2), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
+    x = LeakyReLU(alpha=0.1)(x)
+    # 4x5x24
+    output = Conv2D(5, (1, 1), strides=(1,1), padding='same', use_bias=False, kernel_initializer='he_uniform', dilation_rate=1)(x)
+    
+    #output = Reshape(4, 5, 5)(x)
 
     model = Model(inputs=input_image, outputs=output)
 
