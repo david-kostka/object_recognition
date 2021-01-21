@@ -4,3 +4,5 @@
 /spl_detector/src/__pycache__
 /spl_detector/data/checkpoints
 /spl_detector/data/datasets
+/multi_object_detector/src/__pycache__
+/multi_object_detector/src/util/__pycache__

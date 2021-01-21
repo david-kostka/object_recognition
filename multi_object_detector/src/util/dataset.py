@@ -1,15 +1,17 @@
-# Zweck:
-# Hilfsfunktionen zum erstellen von TFRecords aus Simulator Trainingsdaten
-# Erzeugung eines tf.data.Dataset Objektes basierend auf den TFRecord Files und Bilddaten
-# Author: David Kostka
-# Datum: 05.11.2020
+'''
+Hilfsfunktionen zum erstellen von TFRecords aus Simulator Trainingsdaten
+Helper functions to create an image Dataset.
 
+Erzeugung eines tf.data.Dataset Objektes basierend auf den TFRecord Files und Bilddaten
+Author: David Kostka
+Date: 20.01.2021
+'''
 # TODO: In Klasse convertieren, Generalisieren so dass die Struktur der labels.csv definiert werden kann aber der Rest gleich bleibt (selbe TFRecord Struktur)
-# Config Datei lesen um an Dataset anpassbar zu sein
-# Definierbares mapping von CSV Spaltenname zu TFRecord Feature name z.B. {filename:"name", xmin:"minX", ...}
+# Dafür Config Datei lesen um an Dataset anpassbar zu sein, spalten, codierung, nr. channels
+# und definierbares mapping von CSV Spaltenname zu TFRecord Feature name z.B. {filename:"name", xmin:"minX", ...}
 
-import pandas as pd
 import tensorflow as tf
+import pandas as pd
 import numpy as np
 import os
 from collections import namedtuple, OrderedDict
@@ -21,7 +23,7 @@ target_size = (60, 80)
 def create_tf_example(row, img_path):
     filename = row.name.encode('utf8')
 
-    img_raw = open(img_path + row.name, 'rb').read()
+    img_raw = open(os.path.join(img_path, row.name), 'rb').read()
 
     xmins = row.minX / orig_size[1]
     xmaxs = row.maxX / orig_size[1]
@@ -51,42 +53,10 @@ def write_tfrecord(labels, img_path, output_path):
     writer.close()
     print("TFRecord '" + output_path + "' created")
 
-def read_csv(path):
-    return pd.read_csv(path, sep=r'\s*,\s*', engine='python')
-
 def create_tfrecord_from_csv(csv_path, img_path, output_path):
-    labels = read_csv(csv_path)
+    labels = pd.read_csv(csv_path, sep=r'\s*,\s*', engine='python')
 
     write_tfrecord(labels, img_path, output_path)
-
-def split_csv(csv_path, output_path, train_name, test_name, test_split=0.2):
-    labels = read_csv(csv_path)
-    labels = labels.sample(frac=1).reset_index(drop=True)
-
-    count = len(labels)
-    split_index = int(count - count * test_split)
-
-    labels[:split_index].to_csv(output_path + train_name, index=False)
-    labels[split_index:].to_csv(output_path + test_name, index=False)
-
-def create_clean_csv(csv_path, img_path, output_path, nr_neg_labels_weight=0.3):
-    raw_labels = pd.read_csv(csv_path, sep=r'\s*,\s*', index_col=None, engine='python')
-    raw_labels = raw_labels[['name', 'minX', 'minY', 'maxX', 'maxY']]
-
-    raw_labels['classes'] = 1
-    labels_img_names = raw_labels['name'].unique()
-    all_img_names = os.listdir(img_path)
-    no_nao_img_names = np.setdiff1d(all_img_names, labels_img_names)
-    negative_labels = pd.DataFrame(no_nao_img_names, columns=['name'])
-    negative_labels['classes'] = 0
-    negative_labels = negative_labels.sample(frac=1).reset_index(drop=True)
-    raw_labels = raw_labels.append(negative_labels[:int(len(negative_labels) * nr_neg_labels_weight)])
-    raw_labels = raw_labels[raw_labels.name != 'name']
-
-    labels = raw_labels.fillna(0).groupby('name').filter(lambda x: len(x) == 1)
-    labels = labels.sample(frac=1).reset_index(drop=True)
-
-    return labels.to_csv(output_path, index=False)
 
 def parse_tfrecord(tfrecord):
     IMAGE_FEATURE_MAP = {

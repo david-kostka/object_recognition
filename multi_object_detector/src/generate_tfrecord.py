@@ -1,13 +1,15 @@
-import tools.dataset as ds
+import util.dataset as ds
 import os
 from absl import app, flags, logging
 from absl.flags import FLAGS
-# python generate_tfrecord.py --raw_images_path=D:/workspace/datasets/simulator/1_1/images/ --csv_path=../data/datasets/simulator/labels_with_negatives.csv
+
+# python generate_tfrecord.py --raw_images_path=D:/workspace/datasets/simulator/1_1/images/ --csv_path=../data/datasets/simulator/1_1/labels_with_negatives.csv
 # TODO: Use config file like yaml
+
 FLAGS = flags.FLAGS
 flags.DEFINE_string('raw_images_path', '', 'Path to images')
 flags.DEFINE_string('csv_path', '', 'Path to label CSV')
-flags.DEFINE_string('output_folder', '../data/datasets/simulator/', 'Path to TFRecord output folder')
+flags.DEFINE_string('output_folder', '../data/datasets/simulator/1_1', 'Path to TFRecord output folder')
 
 tfrecord_train_name = 'single_nao_train.record'
 tfrecord_test_name = 'single_nao_val.record'
